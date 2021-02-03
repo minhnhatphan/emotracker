@@ -29,7 +29,7 @@ class GUI_EmoTracker():
         self.setup_root()
         self.db = Database()
         self.dashboard = Dashboard(self.db, self.tab_dashboard_day)
-        self.report = Report(self.tab_report)
+        self.report = Report(self.tab_report, self.db)
 
     def setup_root(self):
         self.root.title("EmoTracker Dashboard")
