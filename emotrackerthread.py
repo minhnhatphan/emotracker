@@ -71,7 +71,11 @@ class EmoTrackerThread(StoppableThread):
             if len(faces) > 0:
                 emotion, detect_face_MTCNN = self.video_processor.find_face_MTCNN(
                     _frame, faces)
-                self.emotion_counter[emotion] += 1
+                if emotion is not None:
+                    self.emotion_counter[emotion] += 1
+                else:
+                    detect_face_MTCNN = _frame
+                    self.emotion_counter[-1] += 1  # add to no face detected
             else:
                 detect_face_MTCNN = _frame
                 self.emotion_counter[-1] += 1  # add to no face detected
