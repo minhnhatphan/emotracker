@@ -52,45 +52,29 @@ class Report:
     def generate_report(self):
         end_date = self.end_date.get_date() + timedelta(days=1)  # Until end of day
         start_date = end_date - timedelta(days=self.date_range.get())
-
         _unix_start = time.mktime(start_date.timetuple())
         _unix_end = time.mktime(end_date.timetuple())
 
-        df = self.db.get_record_range(_unix_start, _unix_end)
+        self.df = self.db.get_record_range(_unix_start, _unix_end)
+        self.df["DateTime"] = self.df.apply(
+            lambda row: datetime.fromtimestamp(row["TimeStamp"]), axis=1)
+        self.df["TimeOfDay"] = self.df.apply(
+            lambda row: row["DateTime"].hour, axis=1)
+        self.prepare_activity_df()
 
         _date_range_str = "weekly" if self.date_range.get() == 7 else "monthly"
 
-        self.generate_emotion_mean_plot(df, _date_range_str)
-        self.generate_activity_plot(df)
+        self.generate_emotion_mean_plot(_date_range_str)
+        self.generate_activity_plot()
+        self.generate_pos_neg_plot()
+        self.generate_emotion_pie_plot()
 
-    def generate_emotion_mean_plot(self, df, date_range_str):
-        EMOTION_MEAN_PLOT = f"{date_range_str}_mean.png"
+        self.generate_pdf()
 
-        emo_df = pd.DataFrame(
-            data=list(df.columns)[1:-1],
-            columns=["Emotion"])
-        emo_df["Sum"] = emo_df.apply(
-            lambda row: df[row["Emotion"]].mean(), axis=1)
-        ax = emo_df.plot.bar(
-            x="Emotion",
-            y="Sum",
-            title=f"{date_range_str} mean",
-            figsize=(10, 5),
-            legend=False,
-            fontsize=8)
-        ax.set_xlabel("Emotion", fontsize=12)
-        ax.set_ylabel("Average Time/Min", fontsize=12)
-
-        plt.savefig(os.path.join(self.report_directory, EMOTION_MEAN_PLOT))
-
-    def generate_activity_plot(self, df):
-        ACTIVITY_PLOT = "daily_activity_plot.png"
-        df["DateTime"] = df.apply(
-            lambda row: datetime.fromtimestamp(row["TimeStamp"]), axis=1)
-        df["TimeOfDay"] = df.apply(lambda row: row["DateTime"].hour, axis=1)
-        activity_df = df.groupby("TimeOfDay").mean().drop(
+    def prepare_activity_df(self):
+        self.activity_df = self.df.groupby("TimeOfDay").mean().drop(
             ["TimeStamp"], axis=1)
-        activity_df["Total"] = activity_df.sum(axis=1)
+        self.activity_df["Total"] = self.activity_df.sum(axis=1)
 
         def get_activity(row, mood):
             if row["Total"] == 0:
@@ -105,18 +89,41 @@ class Report:
                 res += row[emotion]
             return res
 
-        activity_df["Activity"] = activity_df.apply(
+        self.activity_df["Activity"] = self.activity_df.apply(
             get_activity, axis=1, mood="None")
-        activity_df["Negative"] = activity_df.apply(get_emotion, axis=1, emotions=[
-                                                    "Angry", "Disgust", "Fear", "Sad"])
-        activity_df["Positive"] = activity_df.apply(
+        self.activity_df["Negative"] = self.activity_df.apply(get_emotion, axis=1,
+                                                              emotions=["Angry", "Disgust", "Fear", "Sad"])
+        self.activity_df["Positive"] = self.activity_df.apply(
             get_emotion, axis=1, emotions=["Happy"])
-        activity_df["Neutral"] = activity_df.apply(
+        self.activity_df["Neutral"] = self.activity_df.apply(
             get_emotion, axis=1, emotions=["Neutral", "Surprise"])
 
-        activity_df = activity_df.reindex(pd.RangeIndex(24)).fillna(0)
+        self.activity_df = self.activity_df.reindex(
+            pd.RangeIndex(24)).fillna(0)
 
-        activity_df.plot.bar(
+    def generate_emotion_mean_plot(self, date_range_str):
+        self.EMOTION_MEAN_PLOT = f"{date_range_str}_mean.png"
+
+        emo_df = pd.DataFrame(
+            data=list(self.df.columns)[1:-3],
+            columns=["Emotion"])
+        emo_df["Sum"] = emo_df.apply(
+            lambda row: self.df[row["Emotion"]].mean(), axis=1)
+        ax = emo_df.plot.bar(
+            x="Emotion",
+            y="Sum",
+            title=f"{date_range_str} mean",
+            figsize=(10, 5),
+            legend=False,
+            fontsize=8)
+        ax.set_xlabel("Emotion", fontsize=12)
+        ax.set_ylabel("Average Time/Min", fontsize=12)
+
+        plt.savefig(os.path.join(self.report_directory, EMOTION_MEAN_PLOT))
+
+    def generate_activity_plot(self):
+        self.ACTIVITY_PLOT = "daily_activity_plot.png"
+        self.activity_df.plot.bar(
             y="Activity",
             title="Activity Time in Day",
             xlabel="Time",
@@ -125,3 +132,28 @@ class Report:
         )
 
         plt.savefig(os.path.join(self.report_directory, ACTIVITY_PLOT))
+
+    def generate_pos_neg_plot(self):
+        self.POS_NEG_PLOT = "positive_vs_negative.png"
+        self.activity_df.plot(
+            y=["Positive", "Negative"],
+            kind="bar",
+            title="Positive vs Negative",
+            xlabel="Time",
+            ylabel="s/min"
+        )
+        plt.savefig(os.path.join(self.report_directory, POS_NEG_PLOT))
+
+    def generate_emotion_pie_plot(self):
+        self.EMOTION_PIE_PLOT = "emotion_pie.png"
+        self.activity_df[["Positive", "Negative", "Neutral"]].sum().plot(
+            kind="pie",
+            title="Emotion Proportions",
+            ylabel="",
+            labeldistance=1.1,
+            autopct=lambda p: '{:.2f}%'.format(p)
+        )
+        plt.savefig(os.path.join(self.report_directory, EMOTION_PIE_PLOT))
+
+    def generate_pdf(self):
+        pass
