@@ -5,6 +5,7 @@ from tkcalendar import DateEntry
 import time
 import pandas as pd
 import matplotlib.pyplot as plt
+from fpdf import FPDF
 
 EMOTION_CLASSES = ["Angry", "Disgust", "Fear", "Happy",
                    "Sad", "Surprise", "Neutral", "None"]
@@ -64,12 +65,28 @@ class Report:
 
         _date_range_str = "weekly" if self.date_range.get() == 7 else "monthly"
 
+        self.generate_emotion_time()
         self.generate_emotion_mean_plot(_date_range_str)
         self.generate_activity_plot()
         self.generate_pos_neg_plot()
         self.generate_emotion_pie_plot()
 
-        self.generate_pdf()
+        self.generate_pdf(_date_range_str, start_date,
+                          self.end_date.get_date())
+
+        messagebox.showinfo("Emotracker", "Finished!")
+
+    def get_emotion_time(self, emotion):
+        emotion_time = self.activity_df[emotion].sum()
+        hours, mins = self.get_hours_minutes(timedelta(minutes=emotion_time))
+        return "{0} hour{2} {1} minute{3}".format(hours, mins, "s" if hours > 1 else "", "s" if mins > 1 else "")
+
+    def generate_emotion_time(self):
+        t = []
+        for emotion in ["Positive", "Negative", "Neutral"]:
+            t.append(self.get_emotion_time(emotion))
+        self.emotion_time_df = pd.DataFrame(
+            data=t, index=["Positive", "Negative", "Neutral"], columns=["time_per_day"])
 
     def prepare_activity_df(self):
         self.activity_df = self.df.groupby("TimeOfDay").mean().drop(
@@ -156,5 +173,59 @@ class Report:
         )
         plt.savefig(os.path.join(self.report_directory, self.EMOTION_PIE_PLOT))
 
-    def generate_pdf(self):
-        pass
+    def get_hours_minutes(self, td):
+        return td.seconds//3600, (td.seconds//60) % 60
+
+    def get_screen_time(self):
+        up_time = self.activity_df["Total"].sum(
+        ) - self.activity_df["None"].sum()
+        hours, mins = self.get_hours_minutes(timedelta(minutes=up_time))
+        return "You are on screen on average {0} hour{2} {1} minute{3} per day.".format(hours, mins, "s" if hours > 1 else "", "s" if mins > 1 else "")
+
+    def print_emotion_table(self, pdf):
+        pdf.set_font(family='arial', style='B', size=12)
+        pdf.set_x(60)
+        pdf.cell(40, 10, '', 1, 0, 'C')
+        pdf.cell(40, 10, 'Time per day', 1, 1, 'C')
+
+        for row in self.emotion_time_df.itertuples():
+            pdf.set_x(60)
+            pdf.set_font('arial', 'B', 12)
+            pdf.cell(40, 10, '%s' % (row.Index), 1, 0, 'C')
+            pdf.set_font('arial', '', 12)
+            pdf.cell(40, 10, '%s' % (row.time_per_day), 1, 1, 'C')
+        pdf.cell(w=0, h=10, ln=1)
+
+    def generate_pdf(self, date_range_str, start_date, end_date):
+        start_date_str = start_date.strftime("%m/%d/%Y")
+        end_date_str = end_date.strftime("%m/%d/%Y")
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_xy(0, 0)
+        pdf.set_font(family='arial', style='B', size=12)
+        pdf.cell(60)
+        pdf.cell(
+            w=75, h=30, txt=f"Emotion {date_range_str} report {start_date_str} - {end_date_str}",
+            border=0, ln=1, align='C')
+        pdf.set_font(family='arial', size=12)
+        pdf.set_x(20)
+        pdf.cell(20, 20, self.get_screen_time(), 0, 1)
+        pdf.image(os.path.join(self.report_directory, self.ACTIVITY_PLOT),
+                  x=30, y=None, w=140, h=0, type='', link='')
+        pdf.image(os.path.join(self.report_directory, self.POS_NEG_PLOT),
+                  x=30, y=None, w=140, h=0, type='', link='')
+
+        pdf.add_page()
+        pdf.set_xy(0, 20)
+        self.print_emotion_table(pdf)
+        pdf.image(os.path.join(self.report_directory, self.EMOTION_PIE_PLOT),
+                  x=30, y=None, w=140, h=0, type='', link='')
+        pdf.image(os.path.join(self.report_directory, self.EMOTION_MEAN_PLOT),
+                  x=20, y=None, w=160, h=0, type='', link='')
+        pdf.output(
+            f'{date_range_str}_report_{start_date.strftime("%m%d%Y")}_{end_date.strftime("%m%d%Y")}.pdf', 'F')
+
+        os.remove(os.path.join(self.report_directory, self.EMOTION_MEAN_PLOT))
+        os.remove(os.path.join(self.report_directory, self.ACTIVITY_PLOT))
+        os.remove(os.path.join(self.report_directory, self.POS_NEG_PLOT))
+        os.remove(os.path.join(self.report_directory, self.EMOTION_PIE_PLOT))
