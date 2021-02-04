@@ -119,7 +119,8 @@ class Report:
         ax.set_xlabel("Emotion", fontsize=12)
         ax.set_ylabel("Average Time/Min", fontsize=12)
 
-        plt.savefig(os.path.join(self.report_directory, EMOTION_MEAN_PLOT))
+        plt.savefig(os.path.join(
+            self.report_directory, self.EMOTION_MEAN_PLOT))
 
     def generate_activity_plot(self):
         self.ACTIVITY_PLOT = "daily_activity_plot.png"
@@ -131,7 +132,7 @@ class Report:
             legend=False
         )
 
-        plt.savefig(os.path.join(self.report_directory, ACTIVITY_PLOT))
+        plt.savefig(os.path.join(self.report_directory, self.ACTIVITY_PLOT))
 
     def generate_pos_neg_plot(self):
         self.POS_NEG_PLOT = "positive_vs_negative.png"
@@ -142,7 +143,7 @@ class Report:
             xlabel="Time",
             ylabel="s/min"
         )
-        plt.savefig(os.path.join(self.report_directory, POS_NEG_PLOT))
+        plt.savefig(os.path.join(self.report_directory, self.POS_NEG_PLOT))
 
     def generate_emotion_pie_plot(self):
         self.EMOTION_PIE_PLOT = "emotion_pie.png"
@@ -153,7 +154,7 @@ class Report:
             labeldistance=1.1,
             autopct=lambda p: '{:.2f}%'.format(p)
         )
-        plt.savefig(os.path.join(self.report_directory, EMOTION_PIE_PLOT))
+        plt.savefig(os.path.join(self.report_directory, self.EMOTION_PIE_PLOT))
 
     def generate_pdf(self):
         pass
