@@ -8,6 +8,7 @@ import time
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from tkinter import *
 from tkcalendar import DateEntry
+from slider import Slider
 
 EMOTION_CLASSES = ["Angry", "Disgust", "Fear", "Happy",
                    "Sad", "Surprise", "Neutral", "None"]
@@ -17,26 +18,6 @@ TIME_RANGE = ["Today", "1 week", "1 month",
 ROLLING_MEAN_TIME = [("1 min", 1), ("5 mins", 5), ("15 mins", 15), ("30 mins", 30),
                      ("1 hour", 60), ("2 hours", 120), ("6 hours", 360),
                      ("12 hours", 720)]
-
-
-class Slider(Frame):
-    def __init__(self, parent=None):
-        Frame.__init__(self, parent)
-        self.number = ROLLING_MEAN_TIME[0][1]
-        self.slide = Scale(self, orient=HORIZONTAL, command=self.set_value,
-                           fro=0, to=len(ROLLING_MEAN_TIME)-1, font=('Arial', 8), showvalue=0)
-        self.text = Label(self,
-                          text=ROLLING_MEAN_TIME[0][0],
-                          font=('Arial', 8))
-        self.slide.pack()
-        self.text.pack()
-
-    def set_value(self, val):
-        self.number = ROLLING_MEAN_TIME[int(val)][1]
-        self.text.configure(text=ROLLING_MEAN_TIME[int(val)][0])
-
-    def get_value(self):
-        return self.number
 
 
 class Dashboard():
@@ -110,7 +91,8 @@ class Dashboard():
 
         # Slider
         Label(_option_frame, text="Rolling mean: ").grid(row=4, column=0)
-        self.rolling_mean_slider = Slider(_option_frame)
+        self.rolling_mean_slider = Slider(
+            time_value=ROLLING_MEAN_TIME, parent=_option_frame, init_value_index=2)
         self.rolling_mean_slider.grid(row=4, column=1)
 
         # Submit button

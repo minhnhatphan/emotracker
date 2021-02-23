@@ -56,6 +56,6 @@ class GUI_EmoTracker():
 
 
 if __name__ == "__main__":
-    emotion_dir = "C:/Users/Minh Phan/EmoTracker/weights/InceptionV3_Jan_27_2021/model_InceptionV3_Jan_27_2021.h5"
+    emotion_dir = "C:/Users/Minh Phan/EmoTracker/weights/Xception_Feb_11_2021/model_Xception_Feb_11_2021.h5"
     gui = GUI_EmoTracker(emotion_dir=emotion_dir)
     gui.main()

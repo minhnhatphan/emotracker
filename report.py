@@ -6,7 +6,7 @@ import time
 import pandas as pd
 import matplotlib.pyplot as plt
 from fpdf import FPDF
-
+from slider import Slider
 EMOTION_CLASSES = ["Angry", "Disgust", "Fear", "Happy",
                    "Sad", "Surprise", "Neutral", "None"]
 
@@ -18,37 +18,65 @@ class Report:
         self.date_range = IntVar()
         self.date_range.set(7)
         self.report_directory = os.getcwd()
-
-        self.period_frame = Frame(self.master)
-        self.period_frame.grid(row=1, column=1)
-
+        self.session_length = StringVar()
+        self.session_length.set("1 hour")
         self.create_widget()
 
     def get_directory(self):
         self.report_directory = filedialog.askdirectory()
         self.directory_label.configure(
-            text="Save report at: {}".format(self.report_directory))
+            text=self.report_directory)
 
     def create_widget(self):
-        Label(self.master, text="Save report at: ").grid(row=0, column=0)
-        self.directory_label = Label(self.master, text=self.report_directory)
+        directory_frame = Frame(self.master, padx=10, pady=10)
+        directory_frame.grid(row=0, column=0)
+        report_frame = LabelFrame(
+            self.master, text="Weekly/monthly Report",
+            padx=10, pady=10)
+        report_frame.grid(row=3, column=0)
+        session_frame = LabelFrame(
+            self.master, text="Session Report",
+            padx=10, pady=10)
+        session_frame.grid(row=4, column=0)
+
+        self.create_directory_frame(directory_frame)
+        self.create_report_frame(report_frame)
+        self.create_session_frame(session_frame)
+
+    def create_directory_frame(self, directory_frame):
+        Label(directory_frame, text="Save report at: ").grid(row=0, column=0)
+        self.directory_label = Label(
+            directory_frame, text=self.report_directory)
         self.directory_label.grid(row=0, column=1)
-        Button(self.master, text="Change",
+        Button(directory_frame, text="Change",
                command=self.get_directory).grid(row=0, column=2)
 
-        Label(self.master, text="Period: ").grid(row=1, column=0)
+    def create_report_frame(self, report_frame):
+        Label(report_frame, text="Period: ").grid(row=1, column=0)
+        self.period_frame = Frame(report_frame)
+        self.period_frame.grid(row=1, column=1)
         Radiobutton(self.period_frame, text="Weekly (7 days)",
                     variable=self.date_range, value=7).grid(row=0, column=0)
         Radiobutton(self.period_frame, text="Monthly (30 days)",
                     variable=self.date_range, value=30).grid(row=0, column=1)
-
-        Label(self.master, text="End date: ").grid(row=2, column=0)
-        self.end_date = DateEntry(self.master, width=12, background='darkblue',
+        Label(report_frame, text="End date: ").grid(row=2, column=0)
+        self.end_date = DateEntry(report_frame, width=12, background='darkblue',
                                   foreground='white', borderwidth=2)
         self.end_date.grid(row=2, column=1)
-
-        Button(self.master, text="Generate Report",
+        Button(report_frame, text="Generate Report",
                command=self.generate_report).grid(row=3, column=1)
+
+    def create_session_frame(self, session_frame):
+        Label(session_frame, text="Session length: ").grid(row=0, column=0)
+        s_length = [(f"{i} hours", i) for i in range(1, 9)]
+        self.session_slider = Slider(
+            time_value=s_length, parent=session_frame)
+        self.session_slider.grid(row=0, column=1)
+        Button(session_frame, text="Generate Report",
+               command=self.generate_session_report).grid(row=1, column=1)
+
+    def generate_session_report(self):
+        print(self.session_slider.get_value())
 
     def generate_report(self):
         end_date = self.end_date.get_date() + timedelta(days=1)  # Until end of day
@@ -62,7 +90,6 @@ class Report:
         self.df["TimeOfDay"] = self.df.apply(
             lambda row: row["DateTime"].hour, axis=1)
         self.prepare_activity_df()
-
         _date_range_str = "weekly" if self.date_range.get() == 7 else "monthly"
 
         self.generate_emotion_time()
