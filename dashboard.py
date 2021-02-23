@@ -14,6 +14,30 @@ EMOTION_CLASSES = ["Angry", "Disgust", "Fear", "Happy",
 TIME_RANGE = ["Today", "1 week", "1 month",
               "3 months", "6 months", "Customize"]
 
+ROLLING_MEAN_TIME = [("1 min", 1), ("5 mins", 5), ("15 mins", 15), ("30 mins", 30),
+                     ("1 hour", 60), ("2 hours", 120), ("6 hours", 360),
+                     ("12 hours", 720)]
+
+
+class Slider(Frame):
+    def __init__(self, parent=None):
+        Frame.__init__(self, parent)
+        self.number = ROLLING_MEAN_TIME[0][1]
+        self.slide = Scale(self, orient=HORIZONTAL, command=self.set_value,
+                           fro=0, to=len(ROLLING_MEAN_TIME)-1, font=('Arial', 8), showvalue=0)
+        self.text = Label(self,
+                          text=ROLLING_MEAN_TIME[0][0],
+                          font=('Arial', 8))
+        self.slide.pack()
+        self.text.pack()
+
+    def set_value(self, val):
+        self.number = ROLLING_MEAN_TIME[int(val)][1]
+        self.text.configure(text=ROLLING_MEAN_TIME[int(val)][0])
+
+    def get_value(self):
+        return self.number
+
 
 class Dashboard():
     def __init__(self, db, master):
@@ -83,13 +107,19 @@ class Dashboard():
         self.end_cal.grid(
             row=3, column=1,
             padx=x_padding, pady=y_padding)
+
+        # Slider
+        Label(_option_frame, text="Rolling mean: ").grid(row=4, column=0)
+        self.rolling_mean_slider = Slider(_option_frame)
+        self.rolling_mean_slider.grid(row=4, column=1)
+
         # Submit button
         self.submitButton = Button(
             _option_frame,
             text='Update',
             command=lambda: self.update_fig())
         self.submitButton.grid(
-            row=4, column=1,
+            row=5, column=1,
             padx=x_padding, pady=y_padding)
 
         self.update_fig()
@@ -121,8 +151,10 @@ class Dashboard():
         s = df_cur[col].interpolate('time')
         s.index = pd.DatetimeIndex(s.index)
         s = s.reindex(idx, fill_value=0.0)
-        s = pd.to_numeric(s).groupby(
-            pd.Grouper(freq='15Min')).aggregate(np.mean)
+        # s = pd.to_numeric(s).groupby(
+        #     pd.Grouper(freq='15Min')).aggregate(np.mean)
+        s = pd.to_numeric(s).rolling(
+            self.rolling_mean_slider.get_value()).mean()
         # self.ax.plot(df_cur[col].interpolate('time'), color='black')
         self.ax.plot(s, color='black')
         self.ax.set_title(col, fontsize='medium')
