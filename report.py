@@ -18,8 +18,6 @@ class Report:
         self.date_range = IntVar()
         self.date_range.set(7)
         self.report_directory = os.getcwd()
-        self.session_length = StringVar()
-        self.session_length.set("1 hour")
         self.create_widget()
 
     def get_directory(self):
@@ -29,15 +27,15 @@ class Report:
 
     def create_widget(self):
         directory_frame = Frame(self.master, padx=10, pady=10)
-        directory_frame.grid(row=0, column=0)
+        directory_frame.grid(row=0, column=0, padx=300, pady=(20, 10))
         report_frame = LabelFrame(
             self.master, text="Weekly/monthly Report",
-            padx=10, pady=10)
-        report_frame.grid(row=3, column=0)
+            padx=50, pady=10)
+        report_frame.grid(row=3, column=0, padx=300)
         session_frame = LabelFrame(
             self.master, text="Session Report",
-            padx=10, pady=10)
-        session_frame.grid(row=4, column=0)
+            padx=98, pady=10)
+        session_frame.grid(row=4, column=0, padx=300)
 
         self.create_directory_frame(directory_frame)
         self.create_report_frame(report_frame)
@@ -61,7 +59,7 @@ class Report:
                     variable=self.date_range, value=30).grid(row=0, column=1)
         Label(report_frame, text="End date: ").grid(row=2, column=0)
         self.end_date = DateEntry(report_frame, width=12, background='darkblue',
-                                  foreground='white', borderwidth=2)
+                                  foreground='white', borderwidth=10)
         self.end_date.grid(row=2, column=1)
         Button(report_frame, text="Generate Report",
                command=self.generate_report).grid(row=3, column=1)
