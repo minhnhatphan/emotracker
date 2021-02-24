@@ -8,6 +8,9 @@ import matplotlib.pyplot as plt
 from fpdf import FPDF
 from slider import Slider
 from utils import *
+import matplotlib.dates as mdates
+from matplotlib.patches import Rectangle
+
 EMOTION_CLASSES = ["Angry", "Disgust", "Fear", "Happy",
                    "Sad", "Surprise", "Neutral", "None"]
 
@@ -75,14 +78,16 @@ class Report:
                command=self.generate_session_report).grid(row=1, column=1)
 
     def generate_session_report(self):
-        end_date = datetime.now()
+        end_date = round_time(datetime.now())
         start_date = end_date - \
             timedelta(hours=self.session_slider.get_value())
         _unix_start = time.mktime(start_date.timetuple())
         _unix_end = time.mktime(end_date.timetuple())
 
-        df = self.prepare_df(_unix_start, _unix_end)
-        activity_df = self.prepare_activity_df(df)
+        df = self.get_time_df(_unix_start, _unix_end)
+        session_df = self.get_session_df(df, start_date, end_date)
+        self.generate_session_area_plot(session_df)
+        # print(session_df)
 
     def generate_report(self):
         end_date = self.end_date.get_date() + timedelta(days=1)  # Until end of day
@@ -90,8 +95,8 @@ class Report:
         _unix_start = time.mktime(start_date.timetuple())
         _unix_end = time.mktime(end_date.timetuple())
 
-        df = self.prepare_df(_unix_start, _unix_end)
-        activity_df = self.prepare_activity_df(df)
+        df = self.get_time_df(_unix_start, _unix_end)
+        activity_df = self.get_activity_df(df)
         _date_range_str = "weekly" if self.date_range.get() == 7 else "monthly"
 
         self.generate_emotion_mean_plot(df, _date_range_str)
@@ -117,46 +122,54 @@ class Report:
             data=t, index=["Positive", "Negative", "Neutral"], columns=["time_per_day"])
         return emotion_time_df
 
-    def prepare_df(self, unix_start, unix_end):
+    def get_time_df(self, unix_start, unix_end):
         df = self.db.get_record_range(unix_start, unix_end)
         df["DateTime"] = df.apply(
             lambda row: datetime.fromtimestamp(row["TimeStamp"]), axis=1)
         df["TimeOfDay"] = df.apply(lambda row: row["DateTime"].hour, axis=1)
         return df
 
-    def prepare_activity_df(self, df):
+    def get_session_df(self, df, start_date, end_date):
+        _date_range = pd.date_range(
+            start_date, end_date, closed="right", freq="1min")
+        session_df = pd.DataFrame(_date_range, columns=["DateTime"])
+        session_df = session_df.merge(df, how="left", on="DateTime").fillna(0)
+        session_df.drop(["TimeStamp", "TimeOfDay", "None"], axis=1)
+
+        session_df = add_emotion_states(session_df)
+        session_df["Total"] = session_df.apply(get_emotion, axis=1,
+                                               emotions=["Positive", "Negative", "Neutral"])
+        session_df = add_emotion_states_percent(session_df)
+        return session_df
+
+    def get_activity_df(self, df):
         activity_df = df.groupby("TimeOfDay").mean().drop(
             ["TimeStamp"], axis=1)
         activity_df["Total"] = activity_df.sum(axis=1)
 
-        def get_activity(row, mood):
-            if row["Total"] == 0:
-                return 0
-            if mood == "None":
-                return ((row["Total"]-row[mood])/row["Total"])*100
-            return (row[mood]/row["Total"])*100
-
-        def get_emotion(row, emotions):
-            res = 0
-            for emotion in emotions:
-                res += row[emotion]
-            return res
-
         activity_df["Activity"] = activity_df.apply(
             get_activity, axis=1, mood="None")
-        activity_df["Negative"] = activity_df.apply(get_emotion, axis=1,
-                                                    emotions=["Angry", "Disgust", "Fear", "Sad"])
-        activity_df["Positive"] = activity_df.apply(
-            get_emotion, axis=1, emotions=["Happy"])
-        activity_df["Neutral"] = activity_df.apply(
-            get_emotion, axis=1, emotions=["Neutral", "Surprise"])
+
+        activity_df = add_emotion_states(activity_df)
 
         activity_df = activity_df.reindex(
             pd.RangeIndex(24)).fillna(0)
         return activity_df
 
+    def generate_session_area_plot(self, df):
+        self.session_area_plot_name = "session_area_plot.png"
+        ax = df.plot.area(x="DateTime",
+                          y=["Positive_percent", "Negative_percent",
+                             "Neutral_percent"],
+                          color=['green', 'red', '#04d8b2'])
+        plt.ylim(0, 100)
+        plt.legend(loc='upper left')
+
+        plt.savefig(os.path.join(
+            self.report_directory, self.session_area_plot_name))
+
     def generate_emotion_mean_plot(self, df, date_range_str):
-        self.EMOTION_MEAN_PLOT = f"{date_range_str}_mean.png"
+        self.emotion_mean_plot_name = f"{date_range_str}_mean.png"
 
         emo_df = pd.DataFrame(
             data=list(df.columns)[1:-3],
@@ -174,10 +187,10 @@ class Report:
         ax.set_xlabel("Emotion", fontsize=12)
         ax.set_ylabel("Average Time/Min", fontsize=12)
         plt.savefig(os.path.join(
-            self.report_directory, self.EMOTION_MEAN_PLOT))
+            self.report_directory, self.emotion_mean_plot_name))
 
     def generate_activity_plot(self, df):
-        self.ACTIVITY_PLOT = "daily_activity_plot.png"
+        self.activity_plot_name = "daily_activity_plot.png"
         df.plot.bar(
             y="Activity",
             title="Activity Time in Day",
@@ -185,10 +198,11 @@ class Report:
             ylabel="Percentage",
             legend=False
         )
-        plt.savefig(os.path.join(self.report_directory, self.ACTIVITY_PLOT))
+        plt.savefig(os.path.join(
+            self.report_directory, self.activity_plot_name))
 
     def generate_pos_neg_plot(self, df):
-        self.POS_NEG_PLOT = "positive_vs_negative.png"
+        self.pos_neg_plot_name = "positive_vs_negative.png"
         df.plot(
             y=["Positive", "Negative"],
             kind="bar",
@@ -196,10 +210,11 @@ class Report:
             xlabel="Time",
             ylabel="s/min"
         )
-        plt.savefig(os.path.join(self.report_directory, self.POS_NEG_PLOT))
+        plt.savefig(os.path.join(
+            self.report_directory, self.pos_neg_plot_name))
 
     def generate_emotion_pie_plot(self, df):
-        self.EMOTION_PIE_PLOT = "emotion_pie.png"
+        self.emotion_pie_plot_name = "emotion_pie.png"
         df[["Positive", "Negative", "Neutral"]].sum().plot(
             kind="pie",
             title="Emotion Proportions",
@@ -207,7 +222,8 @@ class Report:
             labeldistance=1.1,
             autopct=lambda p: '{:.2f}%'.format(p)
         )
-        plt.savefig(os.path.join(self.report_directory, self.EMOTION_PIE_PLOT))
+        plt.savefig(os.path.join(self.report_directory,
+                                 self.emotion_pie_plot_name))
 
     def get_screen_time(self, activity_df):
         up_time = activity_df["Total"].sum(
@@ -244,22 +260,24 @@ class Report:
         pdf.set_font(family='arial', size=12)
         pdf.set_x(20)
         pdf.cell(20, 20, self.get_screen_time(activity_df), 0, 1)
-        pdf.image(os.path.join(self.report_directory, self.ACTIVITY_PLOT),
+        pdf.image(os.path.join(self.report_directory, self.activity_plot_name),
                   x=30, y=None, w=140, h=0, type='', link='')
-        pdf.image(os.path.join(self.report_directory, self.POS_NEG_PLOT),
+        pdf.image(os.path.join(self.report_directory, self.pos_neg_plot_name),
                   x=30, y=None, w=140, h=0, type='', link='')
 
         pdf.add_page()
         pdf.set_xy(0, 20)
         self.print_emotion_table(pdf, activity_df)
-        pdf.image(os.path.join(self.report_directory, self.EMOTION_PIE_PLOT),
+        pdf.image(os.path.join(self.report_directory, self.emotion_pie_plot_name),
                   x=30, y=None, w=140, h=0, type='', link='')
-        pdf.image(os.path.join(self.report_directory, self.EMOTION_MEAN_PLOT),
+        pdf.image(os.path.join(self.report_directory, self.emotion_mean_plot_name),
                   x=20, y=None, w=160, h=0, type='', link='')
         pdf.output(
             f'{date_range_str}_report_{start_date.strftime("%m%d%Y")}_{end_date.strftime("%m%d%Y")}.pdf', 'F')
 
-        os.remove(os.path.join(self.report_directory, self.EMOTION_MEAN_PLOT))
-        os.remove(os.path.join(self.report_directory, self.ACTIVITY_PLOT))
-        os.remove(os.path.join(self.report_directory, self.POS_NEG_PLOT))
-        os.remove(os.path.join(self.report_directory, self.EMOTION_PIE_PLOT))
+        os.remove(os.path.join(self.report_directory,
+                               self.emotion_mean_plot_name))
+        os.remove(os.path.join(self.report_directory, self.activity_plot_name))
+        os.remove(os.path.join(self.report_directory, self.pos_neg_plot_name))
+        os.remove(os.path.join(self.report_directory,
+                               self.emotion_pie_plot_name))
