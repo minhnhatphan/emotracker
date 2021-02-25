@@ -10,6 +10,7 @@ from slider import Slider
 from utils import *
 import matplotlib.dates as mdates
 from matplotlib.patches import Rectangle
+import statistics
 
 EMOTION_CLASSES = ["Angry", "Disgust", "Fear", "Happy",
                    "Sad", "Surprise", "Neutral", "None"]
@@ -87,7 +88,9 @@ class Report:
         df = self.get_time_df(_unix_start, _unix_end)
         session_df = self.get_session_df(df, start_date, end_date)
         self.generate_session_area_plot(session_df)
-        # print(session_df)
+        self.generate_session_pdf(start_date, end_date, session_df)
+
+        messagebox.showinfo("Emotracker", "Finished!")
 
     def generate_report(self):
         end_date = self.end_date.get_date() + timedelta(days=1)  # Until end of day
@@ -140,6 +143,8 @@ class Report:
         session_df["Total"] = session_df.apply(get_emotion, axis=1,
                                                emotions=["Positive", "Negative", "Neutral"])
         session_df = add_emotion_states_percent(session_df)
+        session_df["low_activity"] = session_df.apply(
+            is_low_activity_thresh, axis=1)
         return session_df
 
     def get_activity_df(self, df):
@@ -161,12 +166,16 @@ class Report:
         ax = df.plot.area(x="DateTime",
                           y=["Positive_percent", "Negative_percent",
                              "Neutral_percent"],
-                          color=['green', 'red', '#04d8b2'])
+                          color=['green', 'red', '#04d8b2'],
+                          title="Emotions Area Plot",
+                          xlabel="Time",
+                          ylabel="Percentage")
         plt.ylim(0, 100)
         plt.legend(loc='upper left')
 
         plt.savefig(os.path.join(
             self.report_directory, self.session_area_plot_name))
+        plt.clf()
 
     def generate_emotion_mean_plot(self, df, date_range_str):
         self.emotion_mean_plot_name = f"{date_range_str}_mean.png"
@@ -188,6 +197,7 @@ class Report:
         ax.set_ylabel("Average Time/Min", fontsize=12)
         plt.savefig(os.path.join(
             self.report_directory, self.emotion_mean_plot_name))
+        plt.clf()
 
     def generate_activity_plot(self, df):
         self.activity_plot_name = "daily_activity_plot.png"
@@ -200,6 +210,7 @@ class Report:
         )
         plt.savefig(os.path.join(
             self.report_directory, self.activity_plot_name))
+        plt.clf()
 
     def generate_pos_neg_plot(self, df):
         self.pos_neg_plot_name = "positive_vs_negative.png"
@@ -212,6 +223,7 @@ class Report:
         )
         plt.savefig(os.path.join(
             self.report_directory, self.pos_neg_plot_name))
+        plt.clf()
 
     def generate_emotion_pie_plot(self, df):
         self.emotion_pie_plot_name = "emotion_pie.png"
@@ -220,10 +232,12 @@ class Report:
             title="Emotion Proportions",
             ylabel="",
             labeldistance=1.1,
-            autopct=lambda p: '{:.2f}%'.format(p)
+            autopct=lambda p: '{:.2f}%'.format(p),
+            legend=False
         )
         plt.savefig(os.path.join(self.report_directory,
                                  self.emotion_pie_plot_name))
+        plt.clf()
 
     def get_screen_time(self, activity_df):
         up_time = activity_df["Total"].sum(
@@ -237,13 +251,41 @@ class Report:
         pdf.set_font(family='arial', style='B', size=12)
         pdf.set_x(60)
         pdf.cell(40, 10, '', 1, 0, 'C')
-        pdf.cell(40, 10, 'Time per day', 1, 1, 'C')
+        pdf.cell(40, 10, 'Avg. time per day', 1, 1, 'C')
         for row in emotion_time_df.itertuples():
             pdf.set_x(60)
             pdf.set_font('arial', 'B', 12)
             pdf.cell(40, 10, '%s' % (row.Index), 1, 0, 'C')
             pdf.set_font('arial', '', 12)
             pdf.cell(40, 10, '%s' % (row.time_per_day), 1, 1, 'C')
+        pdf.cell(w=0, h=10, ln=1)
+
+    def print_session_stats(self, pdf, session_df):
+        onscreen_time, breaks_time = get_onscreen_and_break(
+            session_df['low_activity'].tolist())
+
+        pdf.set_font('arial', '', 12)
+        pdf.set_x(25)
+        pdf.cell(20, 20, 'You had %d breaks during this session.' %
+                 (len(breaks_time)), 0, 1)
+
+        pdf.set_font(family='arial', style='B', size=12)
+        pdf.set_x(25)
+        pdf.cell(40, 10, '', 1, 0, 'C')
+        pdf.cell(40, 10, 'Longest time', 1, 0, 'C')
+        pdf.cell(40, 10, 'Shortest time', 1, 0, 'C')
+        pdf.cell(40, 10, 'Average time', 1, 1, 'C')
+
+        for lst in [(onscreen_time, "On screen"), (breaks_time, "Breaks")]:
+            pdf.set_x(25)
+            pdf.set_font('arial', 'B', 12)
+            pdf.cell(40, 10, '%s' % (lst[1]), 1, 0, 'C')
+            pdf.set_font('arial', '', 12)
+            pdf.cell(40, 10, '%d minutes' % (max(lst[0])), 1, 0, 'C')
+            pdf.cell(40, 10, '%d minutes' % (min(lst[0])), 1, 0, 'C')
+            pdf.cell(40, 10, '%.1f minutes' %
+                     (statistics.mean(lst[0])), 1, 1, 'C')
+
         pdf.cell(w=0, h=10, ln=1)
 
     def generate_pdf(self, date_range_str, start_date, end_date, activity_df):
@@ -272,8 +314,9 @@ class Report:
                   x=30, y=None, w=140, h=0, type='', link='')
         pdf.image(os.path.join(self.report_directory, self.emotion_mean_plot_name),
                   x=20, y=None, w=160, h=0, type='', link='')
-        pdf.output(
-            f'{date_range_str}_report_{start_date.strftime("%m%d%Y")}_{end_date.strftime("%m%d%Y")}.pdf', 'F')
+
+        pdf_name = f'{date_range_str}_report_{start_date.strftime("%m%d%Y")}_{end_date.strftime("%m%d%Y")}.pdf'
+        pdf.output(os.path.join(self.report_directory, pdf_name), 'F')
 
         os.remove(os.path.join(self.report_directory,
                                self.emotion_mean_plot_name))
@@ -281,3 +324,24 @@ class Report:
         os.remove(os.path.join(self.report_directory, self.pos_neg_plot_name))
         os.remove(os.path.join(self.report_directory,
                                self.emotion_pie_plot_name))
+
+    def generate_session_pdf(self, start_date, end_date, session_df):
+        start_date_str = start_date.strftime("%m/%d/%Y %H:%M")
+        end_date_str = end_date.strftime("%m/%d/%Y %H:%M")
+
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_xy(0, 0)
+        pdf.set_font(family='arial', style='B', size=12)
+        pdf.cell(70)
+        pdf.cell(
+            w=75, h=30, txt=f"Session report {start_date_str} - {end_date_str}",
+            border=0, ln=1, align='C')
+        pdf.image(os.path.join(self.report_directory, self.session_area_plot_name),
+                  x=25, y=None, w=160, h=0, type='', link='')
+        self.print_session_stats(pdf, session_df)
+        pdf_name = 'Emotion_session_report.pdf'
+        pdf.output(os.path.join(self.report_directory, pdf_name), 'F')
+
+        os.remove(os.path.join(self.report_directory,
+                               self.session_area_plot_name))
