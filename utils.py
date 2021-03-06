@@ -46,11 +46,7 @@ def add_emotion_states(df):
 
 
 def get_emotion_percent(row, emotion):
-    if row["Total"] != 0:
-        return (row[emotion]/row["Total"])*100
-        # return (row[emotion]/60)*100
-
-    return 0 if emotion == "Neutral" else 0
+    return (row[emotion]/60)*100
 
 
 def add_emotion_states_percent(df):

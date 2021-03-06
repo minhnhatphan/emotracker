@@ -25,6 +25,8 @@ class Report:
         self.report_directory = os.getcwd()
         self.create_widget()
 
+        self.low_activity_thresh = 0.05
+
     def get_directory(self):
         self.report_directory = filedialog.askdirectory()
         self.directory_label.configure(
@@ -148,7 +150,7 @@ class Report:
                                                emotions=["Positive", "Negative", "Neutral"])
         session_df = add_emotion_states_percent(session_df)
         session_df["low_activity"] = session_df.apply(
-            is_low_activity_thresh, axis=1)
+            is_low_activity_thresh, axis=1, thresh=self.low_activity_thresh)
         return session_df
 
     def get_activity_df(self, df):
@@ -173,10 +175,12 @@ class Report:
                           color=['green', 'red', '#04d8b2'],
                           title="Emotions Area Plot",
                           xlabel="Time",
-                          ylabel="Percentage")
+                          ylabel="Activity (%)",
+                          stacked=True
+                          )
         plt.ylim(0, 100)
-        plt.legend(loc='upper left')
-
+        plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.12), ncol=3)
+        plt.tight_layout()
         plt.savefig(os.path.join(
             self.report_directory, self.session_area_plot_name))
         plt.clf()
@@ -270,8 +274,8 @@ class Report:
 
         pdf.set_font('arial', '', 12)
         pdf.set_x(25)
-        pdf.cell(20, 20, 'You had %d breaks during this session.' %
-                 (len(breaks_time)), 0, 1)
+        pdf.cell(20, 20, 'You had %d breaks (total activity <%.1f%% for more than 1 minute) during this session.' %
+                 (len(breaks_time), self.low_activity_thresh*100), 0, 1)
 
         pdf.set_font(family='arial', style='B', size=12)
         pdf.set_x(25)
