@@ -32,11 +32,13 @@ class Dashboard():
         self.ax = self.fig.add_axes([0.1, 0.2, 0.8, 0.7])
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.master)
         self.canvas.get_tk_widget().grid(row=0, column=1)
+
         # Frame for options bars
         _option_frame = LabelFrame(
             self.master, text="Settings",
             padx=10, pady=10)
         _option_frame.grid(row=0, column=0)
+
         # Emotion menu dropdown bar
         Label(_option_frame, text="Emotion: ").grid(row=0, column=0, pady=10)
         self.emotion_variable = StringVar(_option_frame)
@@ -50,6 +52,7 @@ class Dashboard():
             row=0, column=1,
             padx=x_padding, pady=y_padding,
             sticky="ew")
+
         # Time range
         Label(_option_frame, text="Time Range: ").grid(
             row=1, column=0,
@@ -61,8 +64,10 @@ class Dashboard():
                    *TIME_RANGE).grid(row=1,
                                      column=1, padx=x_padding,
                                      pady=y_padding, sticky="ew")
+
         # Date time picker
         _today = datetime.today()
+
         # Start Date picker
         Label(_option_frame, text="Start date: ").grid(
             row=2, column=0,
@@ -76,6 +81,7 @@ class Dashboard():
         self.start_cal.set_date(_today)
         self.start_cal.grid(row=2, column=1,
                             padx=x_padding, pady=y_padding)
+
         # End date picker
         Label(_option_frame, text="End date: ").grid(row=3, column=0)
         self.end_cal = DateEntry(
@@ -93,7 +99,16 @@ class Dashboard():
         Label(_option_frame, text="Rolling mean: ").grid(row=4, column=0)
         self.rolling_mean_slider = Slider(
             time_value=ROLLING_MEAN_TIME, parent=_option_frame, init_value_index=2)
-        self.rolling_mean_slider.grid(row=4, column=1)
+        self.rolling_mean_slider.grid(
+            row=4, column=1, padx=x_padding, pady=y_padding)
+
+        # Break time picker
+        Label(_option_frame, text="Break time (in minutes): ").grid(
+            row=5, column=0)
+        # Default value=60 mins
+        self.break_time = Entry(_option_frame)
+        self.break_time.insert(END, 60)  # Default breaktime
+        self.break_time.grid(row=5, column=1, padx=x_padding, pady=y_padding)
 
         # Submit button
         self.submitButton = Button(
@@ -101,12 +116,13 @@ class Dashboard():
             text='Update',
             command=lambda: self.update_fig())
         self.submitButton.grid(
-            row=5, column=1,
+            row=6, column=1,
             padx=x_padding, pady=y_padding)
 
         self.update_fig()
 
     def update_fig(self):
+        print(self.break_time.get())
         self.ax.clear()
         col = self.emotion_variable.get()
         if self.time_range_variable.get() == "Customize":
@@ -133,16 +149,12 @@ class Dashboard():
         s = df_cur[col].interpolate('time')
         s.index = pd.DatetimeIndex(s.index)
         s = s.reindex(idx, fill_value=0.0)
-        # s = pd.to_numeric(s).groupby(
-        #     pd.Grouper(freq='15Min')).aggregate(np.mean)
         s = pd.to_numeric(s).rolling(
             self.rolling_mean_slider.get_value()).mean()
-        # self.ax.plot(df_cur[col].interpolate('time'), color='black')
         self.ax.plot(s, color='black')
         self.ax.set_title(col, fontsize='medium')
         self.ax.set_ylim(bottom=0)
 
-        # Rotate x ticks vertically
         for tick in self.ax.get_xticklabels():
             tick.set_rotation(90)
         # Consise Date Formatter

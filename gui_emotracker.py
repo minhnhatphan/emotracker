@@ -13,12 +13,11 @@ class GUI_EmoTracker():
         self.root = Tk()
         self.tab_parent = ttk.Notebook(self.root)
 
-        self.tab_tracker = ttk.Frame(self.tab_parent)
         self.tab_dashboard_day = ttk.Frame(self.tab_parent)
         self.tab_report = ttk.Frame(self.tab_parent)
 
-        # self.tab_parent.add(self.tab_tracker, text="This Session")
-        self.tab_parent.add(self.tab_dashboard_day, text="Statistics")
+        self.tab_parent.add(self.tab_dashboard_day,
+                            text="Session & Statistics")
         self.tab_parent.add(self.tab_report, text="Generate Report")
         self.tab_parent.pack(expand=1, fill="both")
 
@@ -33,12 +32,11 @@ class GUI_EmoTracker():
 
     def setup_root(self):
         self.root.title("EmoTracker Dashboard")
-        # self.root.geometry("400x400")
         self.root.resizable(0, 0)
 
     def main(self):
         self.worker_frame = EmoTrackerThread(
-            self.video_processor, self.tab_tracker, self.db)
+            self.video_processor, self.db)
         self.worker_frame.start()
 
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)

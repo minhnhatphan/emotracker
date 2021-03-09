@@ -23,41 +23,17 @@ class StoppableThread(threading.Thread):
 
 
 class EmoTrackerThread(StoppableThread):
-    def __init__(self, video_processor, master, db, *args, **kwargs):
+    def __init__(self, video_processor, db, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.video_capture = cv2.VideoCapture(0)
         self.video_processor = video_processor
-        self.master = master
         self.db = db
         self.emotion_counter = [0 for i in range(
             len(self.video_processor.EMOTION_CLASSES))]
-        # Init Label for displaying fps
-        self.fps_label = Label(
-            self.master,
-            text="fps: 0",
-            padx=20)
-        self.fps_label.grid(row=0, column=0)
-
-        self.emotion_labels = []
-        for i in range(len(self.emotion_counter)):
-            _label = Label(
-                self.master,
-                text="{}: {}".format(self.video_processor.EMOTION_CLASSES[i], 0))
-            _label.grid(row=i+1, column=0)
-            self.emotion_labels.append(_label)
-
-        self.minute_label = Label(self.master, text="Minute: 0", padx=20)
-        self.minute_label.grid(row=0, column=1)
 
         self.minute_emotion_counter = [0 for i in range(
             len(self.video_processor.EMOTION_CLASSES))]
-        self.minute_emotion_labels = []
-        for i in range(len(self.emotion_counter)):
-            _label = Label(self.master, text="{}: {}".format(
-                self.video_processor.EMOTION_CLASSES[i], 0))
-            _label.grid(row=i+1, column=1)
-            self.minute_emotion_labels.append(_label)
 
     def run(self, *args):
         """Record camera, detect face and track emotion within a thread"""
@@ -86,17 +62,9 @@ class EmoTrackerThread(StoppableThread):
             _time_current = int(time.time())
             _minute_counter = _time_current % 60
             if (_time_current != time_mark):
-                # self.fps_label.configure(text="fps: {}".format(fps))
-                # self.minute_label.configure(text="Minute: {}".format(_minute_counter))
                 for i in range(len(self.emotion_counter)):
                     fraction = self.emotion_counter[i]/(fps + 1)
                     self.minute_emotion_counter[i] += fraction
-                    # self.emotion_labels[i].configure(text = "{}: {}".format(
-                    #     self.video_processor.EMOTION_CLASSES[i],
-                    #     round(fraction, 2)))
-                    # self.minute_emotion_labels[i].configure(text = "{}: {}".format(
-                    #     self.video_processor.EMOTION_CLASSES[i],
-                    #     round(self.minute_emotion_counter[i], 2)))
                     self.emotion_counter[i] = 0
 
                 if _time_current % 60 == 0:  # End of minute
