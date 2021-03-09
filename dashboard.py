@@ -24,6 +24,7 @@ class Dashboard():
     def __init__(self, db, master):
         self.db = db
         self.master = master
+        self.break_time_value = 60
         self.create_widget()
 
     def create_widget(self, x_padding=10, y_padding=3):
@@ -107,7 +108,7 @@ class Dashboard():
             row=5, column=0)
         # Default value=60 mins
         self.break_time = Entry(_option_frame)
-        self.break_time.insert(END, 60)  # Default breaktime
+        self.break_time.insert(END, self.break_time_value)
         self.break_time.grid(row=5, column=1, padx=x_padding, pady=y_padding)
 
         # Submit button
@@ -121,8 +122,22 @@ class Dashboard():
 
         self.update_fig()
 
+    def update_break_time(self):
+        try:
+            value = int(self.break_time.get())
+            if value < 2:
+                raise ValueError()
+            self.break_time_value = value
+        except ValueError:
+            self.break_time.delete(0,END)
+            self.break_time.insert(0, self.break_time_value)
+            messagebox.showerror(
+                title="Error",
+                message="Break time must be greater than 1 minute. Please try again.")
+
     def update_fig(self):
-        print(self.break_time.get())
+        self.update_break_time()
+
         self.ax.clear()
         col = self.emotion_variable.get()
         if self.time_range_variable.get() == "Customize":
