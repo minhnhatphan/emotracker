@@ -64,6 +64,10 @@ def is_low_activity_thresh(row, thresh=0.1):
     return row["Total"] < (60*thresh)
 
 
+def is_low_activity_value_thresh(value, thresh=0.1):
+    return value < (60*thresh)
+
+
 def get_onscreen_and_break(low_activity):
     assert len(low_activity) > 1
 

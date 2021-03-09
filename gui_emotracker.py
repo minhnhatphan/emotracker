@@ -36,7 +36,7 @@ class GUI_EmoTracker():
 
     def main(self):
         self.worker_frame = EmoTrackerThread(
-            self.video_processor, self.db)
+            self.video_processor, self.db, self.dashboard)
         self.worker_frame.start()
 
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)

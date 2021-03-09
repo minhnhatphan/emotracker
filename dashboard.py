@@ -106,7 +106,6 @@ class Dashboard():
         # Break time picker
         Label(_option_frame, text="Break time (in minutes): ").grid(
             row=5, column=0)
-        # Default value=60 mins
         self.break_time = Entry(_option_frame)
         self.break_time.insert(END, self.break_time_value)
         self.break_time.grid(row=5, column=1, padx=x_padding, pady=y_padding)
@@ -125,15 +124,15 @@ class Dashboard():
     def update_break_time(self):
         try:
             value = int(self.break_time.get())
-            if value < 2:
+            if value < 1:
                 raise ValueError()
             self.break_time_value = value
         except ValueError:
-            self.break_time.delete(0,END)
+            self.break_time.delete(0, END)
             self.break_time.insert(0, self.break_time_value)
             messagebox.showerror(
                 title="Error",
-                message="Break time must be greater than 1 minute. Please try again.")
+                message="Break time must be positive. Please try again.")
 
     def update_fig(self):
         self.update_break_time()
@@ -178,6 +177,10 @@ class Dashboard():
         self.ax.xaxis.set_major_locator(locator)
         self.ax.xaxis.set_major_formatter(formatter)
         self.canvas.draw()
+
+    def break_time_warning(self):
+        messagebox.showwarning(title="Break time warning",
+                               message=f"You have been on screen for {self.break_time_value} minutes. It's time for a break.")
 
     def get_time_range(self):
         time_type = self.time_range_variable.get()

@@ -6,6 +6,7 @@ import numpy as np
 import tkinter
 import PIL
 from PIL import Image, ImageTk
+from utils import *
 
 
 class StoppableThread(threading.Thread):
@@ -23,9 +24,10 @@ class StoppableThread(threading.Thread):
 
 
 class EmoTrackerThread(StoppableThread):
-    def __init__(self, video_processor, db, *args, **kwargs):
+    def __init__(self, video_processor, db, dashboard, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.dashboard = dashboard
         self.video_capture = cv2.VideoCapture(0)
         self.video_processor = video_processor
         self.db = db
@@ -39,6 +41,7 @@ class EmoTrackerThread(StoppableThread):
         """Record camera, detect face and track emotion within a thread"""
         time_mark = -1  # mark timer to calculate fps
         fps = 0
+        onscreen_time = 0
         while not self.stopped():
             _, _frame = self.video_capture.read()
             _frame = cv2.resize(_frame, self.video_processor.window_size)
@@ -71,6 +74,16 @@ class EmoTrackerThread(StoppableThread):
                     # Add data to db
                     self.db.insert_row(
                         _time_current, self.minute_emotion_counter)
+
+                    active_time = 60 - self.minute_emotion_counter[-1]
+                    if is_low_activity_value_thresh(active_time, thresh=0.1):
+                        onscreen_time = 0
+                    else:
+                        onscreen_time += 1
+
+                    if onscreen_time > self.dashboard.break_time_value:
+                        self.dashboard.break_time_warning()
+
                     for i in range(len(self.minute_emotion_counter)):
                         self.minute_emotion_counter[i] = 0
                 fps = 0
