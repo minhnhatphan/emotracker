@@ -19,12 +19,16 @@ ROLLING_MEAN_TIME = [("1 min", 1), ("5 mins", 5), ("15 mins", 15), ("30 mins", 3
                      ("1 hour", 60), ("2 hours", 120), ("6 hours", 360),
                      ("12 hours", 720)]
 
+stress_percent = list(range(0, 101, 10))
+STRESS_LEVEL = list(zip([f"{i}%" for i in stress_percent], stress_percent))
+
 
 class Dashboard():
     def __init__(self, db, master):
         self.db = db
         self.master = master
-        self.break_time_value = 60
+        self.break_time_len = 60
+        self.stress_time_len = 5
         self.create_widget()
 
     def create_widget(self, x_padding=10, y_padding=3):
@@ -109,10 +113,23 @@ class Dashboard():
         # Break time picker
         Label(_option_frame, text="Break time (in minutes): ").grid(
             row=5, column=0)
-        self.break_time = Entry(_option_frame)
-        self.break_time.insert(END, self.break_time_value)
-        self.break_time.grid(row=5, column=1, padx=x_padding,
-                             pady=y_padding, sticky="ew")
+        self.break_time_entry = Entry(_option_frame)
+        self.break_time_entry.insert(END, self.break_time_len)
+        self.break_time_entry.grid(row=5, column=1, padx=x_padding,
+                                   pady=y_padding, sticky="ew")
+
+        Label(_option_frame, text="Stress time (in minutes): ").grid(
+            row=6, column=0)
+        self.stress_time_entry = Entry(_option_frame)
+        self.stress_time_entry.insert(END, self.stress_time_len)
+        self.stress_time_entry.grid(row=6, column=1, padx=x_padding,
+                                    pady=y_padding, sticky="ew")
+
+        Label(_option_frame, text="Stress Threshold: ").grid(row=7, column=0)
+        self.stress_slider = Slider(
+            time_value=STRESS_LEVEL, parent=_option_frame, init_value_index=5)
+        self.stress_slider.grid(
+            row=7, column=1, padx=x_padding, pady=y_padding, sticky="ew")
 
         # Submit button
         self.submitButton = Button(
@@ -120,26 +137,40 @@ class Dashboard():
             text='Update',
             command=lambda: self.update_fig())
         self.submitButton.grid(
-            row=6, column=1,
+            row=8, column=1,
             padx=x_padding, pady=y_padding)
 
         self.update_fig()
 
     def update_break_time(self):
         try:
-            value = int(self.break_time.get())
+            value = int(self.break_time_entry.get())
             if value < 1:
                 raise ValueError()
-            self.break_time_value = value
+            self.break_time_len = value
         except ValueError:
-            self.break_time.delete(0, END)
-            self.break_time.insert(0, self.break_time_value)
+            self.break_time_entry.delete(0, END)
+            self.break_time_entry.insert(0, self.break_time_len)
             messagebox.showerror(
                 title="Error",
-                message="Break time must be positive. Please try again.")
+                message="Time fields must be positive. Please try again.")
+
+    def update_stress_time(self):
+        try:
+            value = int(self.stress_time_entry.get())
+            if value < 1:
+                raise ValueError()
+            self.stress_time_len = value
+        except ValueError:
+            self.stress_time_entry.delete(0, END)
+            self.stress_time_entry.insert(0, self.stress_time_len)
+            messagebox.showerror(
+                title="Error",
+                message="Time fields must be positive. Please try again.")
 
     def update_fig(self):
         self.update_break_time()
+        self.update_stress_time()
 
         self.ax.clear()
         col = self.emotion_variable.get()
@@ -184,7 +215,11 @@ class Dashboard():
 
     def break_time_warning(self):
         messagebox.showwarning(title="Break time warning",
-                               message=f"You have been on screen for {self.break_time_value} minutes. It's time for a break.")
+                               message=f"You have been on screen for {self.break_time_len} minutes. It's time for a break.")
+
+    def stress_time_warning(self):
+        messagebox.showwarning(title="Stress time warning",
+                               message=f"You have been under negative emotions for {self.stress_time_len} minutes. It's time for a break.")
 
     def get_time_range(self):
         time_type = self.time_range_variable.get()

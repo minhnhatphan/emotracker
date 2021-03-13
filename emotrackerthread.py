@@ -42,6 +42,7 @@ class EmoTrackerThread(StoppableThread):
         time_mark = -1  # mark timer to calculate fps
         fps = 0
         onscreen_time = 0
+        stress_time = 0
         while not self.stopped():
             _, _frame = self.video_capture.read()
             _frame = cv2.resize(_frame, self.video_processor.window_size)
@@ -76,13 +77,24 @@ class EmoTrackerThread(StoppableThread):
                         _time_current, self.minute_emotion_counter)
 
                     active_time = 60 - self.minute_emotion_counter[-1]
+                    negative_time = sum(self.minute_emotion_counter[0:3]) + \
+                        self.minute_emotion_counter[4]
+
                     if is_low_activity_value_thresh(active_time, thresh=0.1):
                         onscreen_time = 0
                     else:
                         onscreen_time += 1
 
-                    if onscreen_time > self.dashboard.break_time_value:
+                    if negative_time/float(60) > (self.dashboard.stress_slider.get_value()/float(100)):
+                        stress_time += 1
+                    else:
+                        stress_time = 0
+
+                    if onscreen_time >= self.dashboard.break_time_len:
                         self.dashboard.break_time_warning()
+
+                    if stress_time >= self.dashboard.stress_time_len:
+                        self.dashboard.stress_time_warning()
 
                     for i in range(len(self.minute_emotion_counter)):
                         self.minute_emotion_counter[i] = 0
