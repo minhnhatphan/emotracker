@@ -15,6 +15,8 @@ import statistics
 EMOTION_CLASSES = ["Angry", "Disgust", "Fear", "Happy",
                    "Sad", "Surprise", "Neutral", "None"]
 
+TEXT_LENGTH = 15
+
 
 class Report:
     def __init__(self, master, db):
@@ -34,15 +36,15 @@ class Report:
 
     def create_widget(self):
         directory_frame = Frame(self.master, padx=10, pady=10)
-        directory_frame.grid(row=0, column=0, padx=300, pady=(20, 10))
+        directory_frame.grid(row=0, column=0, columnspan=2, sticky="ew")
         report_frame = LabelFrame(
             self.master, text="Weekly/monthly Report",
-            padx=50, pady=10)
-        report_frame.grid(row=3, column=0, padx=300)
+            padx=10, pady=10)
+        report_frame.grid(row=1, column=0, sticky="ew")
         session_frame = LabelFrame(
             self.master, text="Session Report",
-            padx=98, pady=10)
-        session_frame.grid(row=4, column=0, padx=300)
+            padx=10, pady=10)
+        session_frame.grid(row=1, column=1, sticky="ew")
 
         self.create_directory_frame(directory_frame)
         self.create_report_frame(report_frame)
@@ -57,32 +59,36 @@ class Report:
                command=self.get_directory).grid(row=0, column=2)
 
     def create_report_frame(self, report_frame):
-        Label(report_frame, text="Period: ").grid(row=0, column=0)
+        Label(report_frame, text="Period: ".ljust(
+            TEXT_LENGTH)).grid(row=0, column=0)
         self.period_frame = Frame(report_frame)
-        self.period_frame.grid(row=0, column=1)
+        self.period_frame.grid(row=0, column=1, padx=20, sticky="ew")
         Radiobutton(self.period_frame, text="Weekly (7 days)",
                     variable=self.date_range, value=7).grid(row=0, column=0)
         Radiobutton(self.period_frame, text="Monthly (30 days)",
                     variable=self.date_range, value=30).grid(row=0, column=1)
-        Label(report_frame, text="End date: ").grid(row=1, column=0)
+        Label(report_frame, text="End date: ".ljust(
+            TEXT_LENGTH)).grid(row=1, column=0)
         self.end_date = DateEntry(report_frame, width=12, background='darkblue',
                                   foreground='white', borderwidth=10)
-        self.end_date.grid(row=1, column=1)
+        self.end_date.grid(row=1, column=1, padx=20, pady=(10, 0), sticky="ew")
         Button(report_frame, text="Generate Report",
-               command=self.generate_report).grid(row=2, column=1)
+               command=self.generate_report, padx=30).grid(row=2, column=0, pady=10, columnspan=2, sticky='n')
 
     def create_session_frame(self, session_frame):
-        Label(session_frame, text="File name: ").grid(row=0, column=0)
-        self.entry_report_name = Entry(session_frame)
+        Label(session_frame, text="File name: ".ljust(
+            TEXT_LENGTH)).grid(row=0, column=0)
+        self.entry_report_name = Entry(session_frame, width=30)
         self.entry_report_name.insert(END, 'Emotion_session_report')
-        self.entry_report_name.grid(row=0, column=1, padx=30)
-        Label(session_frame, text="Session length: ").grid(row=1, column=0)
+        self.entry_report_name.grid(row=0, column=1, padx=20, sticky="ew")
+        Label(session_frame, text="Session length: ".ljust(
+            TEXT_LENGTH)).grid(row=1, column=0)
         s_length = [(f"{i} hours", i) for i in range(1, 9)]
         self.session_slider = Slider(
             time_value=s_length, parent=session_frame)
         self.session_slider.grid(row=1, column=1)
         Button(session_frame, text="Generate Report",
-               command=self.generate_session_report).grid(row=2, column=1)
+               command=self.generate_session_report, padx=30).grid(row=2, column=0, pady=10, columnspan=2, sticky='n')
 
     def generate_session_report(self):
         end_date = round_time(datetime.now())

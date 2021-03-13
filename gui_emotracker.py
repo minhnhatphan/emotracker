@@ -11,6 +11,7 @@ from tkinter import ttk
 class GUI_EmoTracker():
     def __init__(self, emotion_dir, face_detector_dir=None, window_size=(480, 360)):
         self.root = Tk()
+
         self.tab_parent = ttk.Notebook(self.root)
 
         self.tab_dashboard_day = ttk.Frame(self.tab_parent)
@@ -32,6 +33,7 @@ class GUI_EmoTracker():
 
     def setup_root(self):
         self.root.title("EmoTracker Dashboard")
+        self.root.geometry("960x520")
         self.root.resizable(0, 0)
 
     def main(self):

@@ -38,7 +38,7 @@ class Dashboard():
         _option_frame = LabelFrame(
             self.master, text="Settings",
             padx=10, pady=10)
-        _option_frame.grid(row=0, column=0)
+        _option_frame.grid(row=0, column=0, sticky="N")
 
         # Emotion menu dropdown bar
         Label(_option_frame, text="Emotion: ").grid(row=0, column=0, pady=10)
@@ -80,8 +80,10 @@ class Dashboard():
             foreground='white',
             borderwidth=2)
         self.start_cal.set_date(_today)
-        self.start_cal.grid(row=2, column=1,
-                            padx=x_padding, pady=y_padding)
+        self.start_cal.grid(
+            row=2, column=1,
+            padx=x_padding, pady=y_padding,
+            sticky="ew")
 
         # End date picker
         Label(_option_frame, text="End date: ").grid(row=3, column=0)
@@ -94,21 +96,23 @@ class Dashboard():
         self.end_cal.set_date(_today)
         self.end_cal.grid(
             row=3, column=1,
-            padx=x_padding, pady=y_padding)
+            padx=x_padding, pady=y_padding,
+            sticky="ew")
 
         # Slider
         Label(_option_frame, text="Rolling mean: ").grid(row=4, column=0)
         self.rolling_mean_slider = Slider(
             time_value=ROLLING_MEAN_TIME, parent=_option_frame, init_value_index=2)
         self.rolling_mean_slider.grid(
-            row=4, column=1, padx=x_padding, pady=y_padding)
+            row=4, column=1, padx=x_padding, pady=y_padding, sticky="ew")
 
         # Break time picker
         Label(_option_frame, text="Break time (in minutes): ").grid(
             row=5, column=0)
         self.break_time = Entry(_option_frame)
         self.break_time.insert(END, self.break_time_value)
-        self.break_time.grid(row=5, column=1, padx=x_padding, pady=y_padding)
+        self.break_time.grid(row=5, column=1, padx=x_padding,
+                             pady=y_padding, sticky="ew")
 
         # Submit button
         self.submitButton = Button(
