@@ -33,7 +33,6 @@ class GUI_EmoTracker():
 
     def setup_root(self):
         self.root.title("EmoTracker Dashboard")
-        self.root.geometry("960x520")
         self.root.resizable(0, 0)
 
     def main(self):

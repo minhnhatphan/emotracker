@@ -101,6 +101,18 @@ def get_onscreen_and_break(low_activity):
     return onscreen_time, breaks_time
 
 
+def configure_row(master, weights):
+    for idx, weight in enumerate(weights):
+        master.rowconfigure(idx, weight=weight)
+    return master
+
+
+def configure_column(master, weights):
+    for idx, weight in enumerate(weights):
+        master.columnconfigure(idx, weight=weight)
+    return master
+
+
 if __name__ == "__main__":
     low_activity = [False, True, False, True, True, False, False, True, True]
     onscreen_time, breaks_time = get_onscreen_and_break(low_activity)

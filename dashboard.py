@@ -9,6 +9,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from tkinter import *
 from tkcalendar import DateEntry
 from slider import Slider
+from utils import *
 
 EMOTION_CLASSES = ["Angry", "Disgust", "Fear", "Happy",
                    "Sad", "Surprise", "Neutral", "None"]
@@ -24,7 +25,6 @@ STRESS_LEVEL = list(zip([f"{i}%" for i in stress_percent], stress_percent))
 
 X_PADDING = 15
 Y_PADDING = 3
-STATS_OPTION_PADDING = 0
 
 
 class Dashboard():
@@ -33,10 +33,9 @@ class Dashboard():
         self.master = master
         self.break_time_len = 60
         self.stress_time_len = 5
-        self.create_widget()
+        self.create_widgets()
 
-    def create_widget(self):
-        # Statistic Canvas
+    def create_widgets(self):
         self.fig = plt.figure()
         self.ax = self.fig.add_axes([0.1, 0.2, 0.8, 0.7])
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.master)
@@ -45,13 +44,16 @@ class Dashboard():
         session_frame = LabelFrame(
             self.master, text="Session",
             padx=10, pady=10)
+        session_frame = configure_column(session_frame, [1, 1])
+        session_frame = configure_row(session_frame, [1, 1, 1, 1])
         session_frame.grid(row=0, column=0, sticky="nsew")
 
         stats_option_frame = LabelFrame(
             self.master, text="Settings",
             padx=10, pady=10)
-        stats_option_frame.columnconfigure(0, weight=1, uniform="first_group")
-        stats_option_frame.columnconfigure(1, weight=1, uniform="first_group")
+        stats_option_frame = configure_column(stats_option_frame, [1, 1])
+        stats_option_frame = configure_row(
+            stats_option_frame, [1, 1, 1, 1, 1, 2])
         stats_option_frame.grid(row=1, column=0, sticky="nsew")
 
         self.create_session_widgets(session_frame)
@@ -59,44 +61,70 @@ class Dashboard():
 
         self.update_fig()
 
-    def create_stats_option_widgets(self, master):
-        # Emotion menu dropdown bar
-        Label(master, text="Emotion: ").grid(
+    def create_session_widgets(self, session_frame):
+        # Break time picker
+        Label(session_frame, text="Time to break (in minutes): ").grid(
             row=0, column=0, padx=X_PADDING, pady=Y_PADDING, sticky="w")
-        self.emotion_variable = StringVar(master)
+        self.break_time_entry = Entry(session_frame)
+        self.break_time_entry.insert(END, self.break_time_len)
+        self.break_time_entry.grid(row=0, column=1, padx=X_PADDING,
+                                   pady=Y_PADDING, sticky="ew")
+
+        Label(session_frame, text="Stress length (in minutes): ").grid(
+            row=1, column=0, padx=X_PADDING, pady=Y_PADDING, sticky="w")
+        self.stress_time_entry = Entry(session_frame)
+        self.stress_time_entry.insert(END, self.stress_time_len)
+        self.stress_time_entry.grid(
+            row=1, column=1, padx=X_PADDING, pady=Y_PADDING, sticky="ew")
+
+        Label(session_frame, text="Stress Threshold: ").grid(
+            row=2, column=0, padx=X_PADDING, pady=Y_PADDING, sticky="w")
+        self.stress_slider = Slider(
+            time_value=STRESS_LEVEL, parent=session_frame, init_value_index=4, length=130)
+        self.stress_slider.grid(
+            row=2, column=1, padx=X_PADDING, pady=Y_PADDING, sticky="ew")
+
+        update_session_button = Button(
+            session_frame,
+            text='Update',
+            command=lambda: self.update_session(), padx=50)
+        update_session_button.grid(
+            row=3, column=0, columnspan=2, sticky='n')
+
+    def create_stats_option_widgets(self, stats_option_frame):
+        # Emotion menu dropdown bar
+        Label(stats_option_frame, text="Emotion: ").grid(
+            row=0, column=0, padx=X_PADDING, pady=Y_PADDING, sticky="w")
+        self.emotion_variable = StringVar(stats_option_frame)
         self.emotion_variable.set(EMOTION_CLASSES[-1])  # default value
         _emotion_menu = OptionMenu(
-            master, self.emotion_variable, *EMOTION_CLASSES)
+            stats_option_frame, self.emotion_variable, *EMOTION_CLASSES)
         _emotion_menu.grid(row=0, column=1, padx=X_PADDING,
                            pady=Y_PADDING, sticky="ew")
 
         # Time range
-        Label(master, text="Time Range: ").grid(
+        Label(stats_option_frame, text="Time Range: ").grid(
             row=1, column=0, padx=X_PADDING, pady=Y_PADDING, sticky="w")
-        self.time_range_variable = StringVar(master)
+        self.time_range_variable = StringVar(stats_option_frame)
         self.time_range_variable.set(TIME_RANGE[0])  # default value
         OptionMenu(
-            master, self.time_range_variable, *TIME_RANGE).grid(row=1, column=1, padx=X_PADDING, pady=Y_PADDING, sticky="ew")
+            stats_option_frame, self.time_range_variable, *TIME_RANGE).grid(row=1, column=1, padx=X_PADDING, pady=Y_PADDING, sticky="ew")
 
         # Start Date picker
         _today = datetime.today()
-        Label(master, text="Start date: ").grid(
+        Label(stats_option_frame, text="Start date: ").grid(
             row=2, column=0, padx=X_PADDING, pady=Y_PADDING, sticky="w")
         self.start_cal = DateEntry(
-            master,
-            width=12,
-            background='darkblue',
-            foreground='white',
-            borderwidth=2)
+            stats_option_frame, width=12, background='darkblue', foreground='white', borderwidth=2)
         self.start_cal.set_date(_today)
         self.start_cal.grid(row=2, column=1, padx=X_PADDING,
                             pady=Y_PADDING, sticky="ew")
 
         # End date picker
-        Label(master, text="End date: ").grid(
+        Label(stats_option_frame, text="End date: ").grid(
             row=3, column=0, padx=X_PADDING, pady=Y_PADDING, sticky="w")
         self.end_cal = DateEntry(
-            master,
+            stats_option_frame,
             width=12,
             background='darkblue',
             foreground='white',
@@ -106,51 +134,21 @@ class Dashboard():
                           pady=Y_PADDING, sticky="ew")
 
         # Slider
-        Label(master, text="Rolling mean: ").grid(
+        Label(stats_option_frame, text="Rolling mean: ").grid(
             row=4, column=0, padx=X_PADDING, pady=Y_PADDING, sticky="w")
         self.rolling_mean_slider = Slider(
-            time_value=ROLLING_MEAN_TIME, parent=master, init_value_index=2)
+            time_value=ROLLING_MEAN_TIME, parent=stats_option_frame, init_value_index=2, length=180)
         self.rolling_mean_slider.grid(
             row=4, column=1, padx=X_PADDING, pady=Y_PADDING, sticky="ew")
 
         # Submit button
         update_fig_button = Button(
-            master,
+            stats_option_frame,
             text='Update',
             command=lambda: self.update_fig(),
-            padx=30)
+            padx=50)
         update_fig_button.grid(
-            row=5, column=0, columnspan=2, sticky='s')
-
-    def create_session_widgets(self, master):
-        # Break time picker
-        Label(master, text="Time to break (in minutes): ").grid(
-            row=0, column=0, padx=X_PADDING, pady=Y_PADDING, sticky="w")
-        self.break_time_entry = Entry(master)
-        self.break_time_entry.insert(END, self.break_time_len)
-        self.break_time_entry.grid(row=0, column=1, padx=X_PADDING,
-                                   pady=Y_PADDING, sticky="ew")
-
-        Label(master, text="Stress length (in minutes): ").grid(
-            row=1, column=0, padx=X_PADDING, pady=Y_PADDING, sticky="w")
-        self.stress_time_entry = Entry(master)
-        self.stress_time_entry.insert(END, self.stress_time_len)
-        self.stress_time_entry.grid(
-            row=1, column=1, padx=X_PADDING, pady=Y_PADDING, sticky="ew")
-
-        Label(master, text="Stress Threshold: ").grid(
-            row=2, column=0, padx=X_PADDING, pady=Y_PADDING, sticky="w")
-        self.stress_slider = Slider(
-            time_value=STRESS_LEVEL, parent=master, init_value_index=4)
-        self.stress_slider.grid(
-            row=2, column=1, padx=X_PADDING, pady=Y_PADDING, sticky="ew")
-
-        update_session_button = Button(
-            master,
-            text='Update',
-            command=lambda: self.update_session(), padx=30)
-        update_session_button.grid(
-            row=3, column=0, columnspan=2, sticky='s')
+            row=5, column=0, columnspan=2, sticky='n')
 
     def update_session(self):
         self.update_break_time()
