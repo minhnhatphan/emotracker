@@ -11,12 +11,7 @@ from utils import *
 import matplotlib.dates as mdates
 from matplotlib.patches import Rectangle
 import statistics
-
-EMOTION_CLASSES = ["Angry", "Disgust", "Fear", "Happy",
-                   "Sad", "Surprise", "Neutral", "None"]
-
-X_PADDING = 15
-Y_PADDING = 3
+from config import *
 
 
 class Report:

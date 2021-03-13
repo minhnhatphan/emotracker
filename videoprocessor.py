@@ -5,6 +5,7 @@ from tensorflow.keras.models import load_model
 import tensorflow as tf
 import numpy as np
 import os
+from config import *
 # os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 
@@ -13,8 +14,8 @@ class VideoProcessor:
                  emotion_dir, window_size,
                  face_detector_dir=None,
                  min_face_size=80, scale_factor=0.7, res=360):
-        self.EMOTION_CLASSES = ["Angry", "Disgust", "Fear", "Happy", "Sad",
-                                "Surprise", "Neutral", "None"]
+        EMOTION_CLASSES = ["Angry", "Disgust", "Fear", "Happy", "Sad",
+                           "Surprise", "Neutral", "None"]
         self.window_size = window_size
         self.emotion_model = load_model(emotion_dir)
         self.detector = MTCNN(
@@ -32,7 +33,7 @@ class VideoProcessor:
         img = np.expand_dims(img, 0)
         pred = self.emotion_model(img, training=False)
         resultEmotion = np.argmax(pred[0])
-        return resultEmotion, self.EMOTION_CLASSES[resultEmotion]
+        return resultEmotion, EMOTION_CLASSES[resultEmotion]
 
     def find_face_MTCNN(self, frame, result_list):
         result_list.sort(

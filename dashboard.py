@@ -10,21 +10,7 @@ from tkinter import *
 from tkcalendar import DateEntry
 from slider import Slider
 from utils import *
-
-EMOTION_CLASSES = ["Angry", "Disgust", "Fear", "Happy",
-                   "Sad", "Surprise", "Neutral", "None"]
-TIME_RANGE = ["Today", "1 week", "1 month",
-              "3 months", "6 months", "Customize"]
-
-ROLLING_MEAN_TIME = [("1 min", 1), ("5 mins", 5), ("15 mins", 15), ("30 mins", 30),
-                     ("1 hour", 60), ("2 hours", 120), ("6 hours", 360),
-                     ("12 hours", 720)]
-
-stress_percent = list(range(10, 101, 10))
-STRESS_LEVEL = list(zip([f"{i}%" for i in stress_percent], stress_percent))
-
-X_PADDING = 15
-Y_PADDING = 3
+from config import *
 
 
 class Dashboard():
@@ -62,7 +48,6 @@ class Dashboard():
         self.update_fig()
 
     def create_session_widgets(self, session_frame):
-        # Break time picker
         Label(session_frame, text="Time to break (in minutes): ").grid(
             row=0, column=0, padx=X_PADDING, pady=Y_PADDING, sticky="w")
         self.break_time_entry = Entry(session_frame)
@@ -97,58 +82,55 @@ class Dashboard():
             row=0, column=0, padx=X_PADDING, pady=Y_PADDING, sticky="w")
         self.emotion_variable = StringVar(stats_option_frame)
         self.emotion_variable.set(EMOTION_CLASSES[-1])  # default value
-        _emotion_menu = OptionMenu(
-            stats_option_frame, self.emotion_variable, *EMOTION_CLASSES)
-        _emotion_menu.grid(row=0, column=1, padx=X_PADDING,
-                           pady=Y_PADDING, sticky="ew")
+        OptionMenu(
+            stats_option_frame, self.emotion_variable, *EMOTION_CLASSES
+        ).grid(row=0, column=1, padx=X_PADDING, pady=Y_PADDING, sticky="ew")
 
         # Time range
-        Label(stats_option_frame, text="Time Range: ").grid(
-            row=1, column=0, padx=X_PADDING, pady=Y_PADDING, sticky="w")
         self.time_range_variable = StringVar(stats_option_frame)
-        self.time_range_variable.set(TIME_RANGE[0])  # default value
+        self.time_range_variable.set(TIME_RANGE[0])
+        Label(
+            stats_option_frame, text="Time Range: "
+        ).grid(row=1, column=0, padx=X_PADDING, pady=Y_PADDING, sticky="w")
         OptionMenu(
-            stats_option_frame, self.time_range_variable, *TIME_RANGE).grid(row=1, column=1, padx=X_PADDING, pady=Y_PADDING, sticky="ew")
+            stats_option_frame, self.time_range_variable, *TIME_RANGE
+        ).grid(row=1, column=1, padx=X_PADDING, pady=Y_PADDING, sticky="ew")
 
         # Start Date picker
         _today = datetime.today()
         Label(stats_option_frame, text="Start date: ").grid(
             row=2, column=0, padx=X_PADDING, pady=Y_PADDING, sticky="w")
         self.start_cal = DateEntry(
-            stats_option_frame, width=12, background='darkblue', foreground='white', borderwidth=2)
+            stats_option_frame, width=12,
+            background='darkblue', foreground='white', borderwidth=2)
         self.start_cal.set_date(_today)
-        self.start_cal.grid(row=2, column=1, padx=X_PADDING,
-                            pady=Y_PADDING, sticky="ew")
+        self.start_cal.grid(
+            row=2, column=1, padx=X_PADDING, pady=Y_PADDING, sticky="ew")
 
         # End date picker
         Label(stats_option_frame, text="End date: ").grid(
             row=3, column=0, padx=X_PADDING, pady=Y_PADDING, sticky="w")
         self.end_cal = DateEntry(
-            stats_option_frame,
-            width=12,
-            background='darkblue',
-            foreground='white',
-            borderwidth=2)
+            stats_option_frame, width=12,
+            background='darkblue', foreground='white', borderwidth=2)
         self.end_cal.set_date(_today)
-        self.end_cal.grid(row=3, column=1, padx=X_PADDING,
-                          pady=Y_PADDING, sticky="ew")
+        self.end_cal.grid(
+            row=3, column=1, padx=X_PADDING, pady=Y_PADDING, sticky="ew")
 
         # Slider
         Label(stats_option_frame, text="Rolling mean: ").grid(
             row=4, column=0, padx=X_PADDING, pady=Y_PADDING, sticky="w")
         self.rolling_mean_slider = Slider(
-            time_value=ROLLING_MEAN_TIME, parent=stats_option_frame, init_value_index=2, length=180)
+            time_value=ROLLING_MEAN_TIME, parent=stats_option_frame,
+            init_value_index=2, length=180)
         self.rolling_mean_slider.grid(
             row=4, column=1, padx=X_PADDING, pady=Y_PADDING, sticky="ew")
 
         # Submit button
         update_fig_button = Button(
-            stats_option_frame,
-            text='Update',
-            command=lambda: self.update_fig(),
-            padx=50)
-        update_fig_button.grid(
-            row=5, column=0, columnspan=2, sticky='n')
+            stats_option_frame, text='Update',
+            command=lambda: self.update_fig(), padx=50)
+        update_fig_button.grid(row=5, column=0, columnspan=2, sticky='n')
 
     def update_session(self):
         self.update_break_time()
@@ -156,7 +138,20 @@ class Dashboard():
 
     def update_fig(self):
         self.ax.clear()
-        col = self.emotion_variable.get()
+        self.ax.plot(self.get_emotion_in_range(), color='black')
+        self.ax.set_title(self.emotion_variable.get(), fontsize='medium')
+        self.ax.set_ylim(bottom=0)
+
+        for tick in self.ax.get_xticklabels():
+            tick.set_rotation(90)
+        # Consise Date Formatter
+        locator = mdates.AutoDateLocator(minticks=5, maxticks=10)
+        formatter = mdates.ConciseDateFormatter(locator)
+        self.ax.xaxis.set_major_locator(locator)
+        self.ax.xaxis.set_major_formatter(formatter)
+        self.canvas.draw()
+
+    def get_emotion_in_range(self):
         if self.time_range_variable.get() == "Customize":
             time_start = self.start_cal.get_date()
             time_end = self.end_cal.get_date() + timedelta(days=1)
@@ -178,23 +173,12 @@ class Dashboard():
         df_cur = df.loc[time_start:time_end]
 
         idx = pd.date_range(time_start, time_end, freq='min')
-        s = df_cur[col].interpolate('time')
+        s = df_cur[self.emotion_variable.get()].interpolate('time')
         s.index = pd.DatetimeIndex(s.index)
         s = s.reindex(idx, fill_value=0.0)
         s = pd.to_numeric(s).rolling(
             self.rolling_mean_slider.get_value()).mean()
-        self.ax.plot(s, color='black')
-        self.ax.set_title(col, fontsize='medium')
-        self.ax.set_ylim(bottom=0)
-
-        for tick in self.ax.get_xticklabels():
-            tick.set_rotation(90)
-        # Consise Date Formatter
-        locator = mdates.AutoDateLocator(minticks=5, maxticks=10)
-        formatter = mdates.ConciseDateFormatter(locator)
-        self.ax.xaxis.set_major_locator(locator)
-        self.ax.xaxis.set_major_formatter(formatter)
-        self.canvas.draw()
+        return s
 
     def update_break_time(self):
         try:

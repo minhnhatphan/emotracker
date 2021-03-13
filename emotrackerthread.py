@@ -7,6 +7,7 @@ import tkinter
 import PIL
 from PIL import Image, ImageTk
 from utils import *
+from config import *
 
 
 class StoppableThread(threading.Thread):
@@ -32,10 +33,10 @@ class EmoTrackerThread(StoppableThread):
         self.video_processor = video_processor
         self.db = db
         self.emotion_counter = [0 for i in range(
-            len(self.video_processor.EMOTION_CLASSES))]
+            len(EMOTION_CLASSES))]
 
         self.minute_emotion_counter = [0 for i in range(
-            len(self.video_processor.EMOTION_CLASSES))]
+            len(EMOTION_CLASSES))]
 
     def run(self, *args):
         """Record camera, detect face and track emotion within a thread"""
