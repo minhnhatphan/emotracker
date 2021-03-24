@@ -1,3 +1,5 @@
+EMOTION_DIR = "../weights/emotion_classifier.h5"
+
 EMOTION_CLASSES = ["Angry", "Disgust", "Fear", "Happy",
                    "Sad", "Surprise", "Neutral", "None"]
 
